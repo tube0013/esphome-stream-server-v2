@@ -2,7 +2,7 @@
 Custom Component for ESPHome enabling Serial over TCP
 
 This project is forked from the original work at 
-https://github.com/oxan/esphome-stream-server and has be updates to work reliably on ESPHome versions after 2021.10
+https://github.com/oxan/esphome-stream-server and has been updated to work reliably on ESPHome versions after 2021.10
 
 Stream server for ESPHome
 =========================
