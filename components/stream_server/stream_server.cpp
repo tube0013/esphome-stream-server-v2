@@ -41,13 +41,18 @@ void StreamServerComponent::setup() {
 
     this->socket_ = socket::socket(AF_INET, SOCK_STREAM, PF_INET);
 	
-    struct timeval timeout;      
+    struct timeval timeout;
     timeout.tv_sec = 0;
     timeout.tv_usec = 20000; // ESPHome recommends 20-30 ms max for timeouts
-    
+
+    // For ESP-32
     this->socket_->setsockopt(SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
     this->socket_->setsockopt(SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
-  
+    // 
+    // For ESP82XX
+    // this->socket_->setsockopt(SOL_SOCKET, LWIP_SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+    // this->socket_->setsockopt(SOL_SOCKET, LWIP_SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+
     this->socket_->bind(reinterpret_cast<struct sockaddr *>(&bind_addr), sizeof(struct sockaddr_in));
     this->socket_->listen(8);
 
