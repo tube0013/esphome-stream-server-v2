@@ -20,8 +20,7 @@ from esphome.const import CONF_ID, CONF_PORT
 
 # ESPHome doesn't know the Stream abstraction yet, so hardcode to use a UART for now.
 
-AUTO_LOAD = ["socket"]
-
+AUTO_LOAD = ["socket", "async_tcp"]
 DEPENDENCIES = ["uart", "network"]
 
 MULTI_CONF = True
