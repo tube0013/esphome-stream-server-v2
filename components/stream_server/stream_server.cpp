@@ -43,7 +43,7 @@ void StreamServerComponent::setup() {
 	
     struct timeval timeout;      
     timeout.tv_sec = 0;
-    timeout.tv_usec = 20000; // ESPHome recommends 20-30 ms max for timeouts
+    timeout.tv_usec = 5000; // ESPHome recommends 20-30 ms max for timeouts
     
     this->socket_->setsockopt(SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
     this->socket_->setsockopt(SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
@@ -82,8 +82,8 @@ void StreamServerComponent::cleanup() {
 
 void StreamServerComponent::read() {
     int len;
+    char buf[128];
     while ((len = this->stream_->available()) > 0) {
-        char buf[128];
         len = std::min(len, 128);
         this->stream_->read_array(reinterpret_cast<uint8_t*>(buf), len);
         for (const Client &client : this->clients_)
