@@ -18,6 +18,7 @@
 
 #include "esphome/core/component.h"
 #include "esphome/components/socket/socket.h"
+//#include "lwip/sockets.h"
 
 #include "esphome/components/uart/uart.h"
 
