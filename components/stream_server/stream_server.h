@@ -14,7 +14,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "stream_server.h"
+//#include "stream_server.h"
 
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
