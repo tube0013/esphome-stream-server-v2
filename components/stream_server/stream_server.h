@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include "esphome/core/component.h"
-#include "esphome/components/socket/socket.h"
-#include "esphome/components/uart/uart.h"
+#include "esphome/esphome/core/component.h"
+#include "esphome/esphome/components/socket/socket.h"
+#include "esphome/esphome/components/uart/uart.h"
 
 #ifdef ARDUINO_ARCH_ESP8266
 #include <ESPAsyncTCP.h>

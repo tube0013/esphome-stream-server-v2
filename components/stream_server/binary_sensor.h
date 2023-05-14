@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include "esphome/core/component.h"
-#include "esphome/components/binary_sensor/binary_sensor.h"
+#include "esphome/esphome/core/component.h"
+#include "esphome/esphome/components/binary_sensor/binary_sensor.h"
 #include "stream_server.h"
 
 class StreamServerBinarySensor : public esphome::binary_sensor::BinarySensor, public esphome::Component {

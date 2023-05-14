@@ -16,12 +16,12 @@
 
 #include "stream_server.h"
 
-#include "esphome/core/helpers.h"
-#include "esphome/core/log.h"
-#include "esphome/core/util.h"
+#include "esphome/esphome/core/helpers.h"
+#include "esphome/esphome/core/log.h"
+#include "esphome/esphome/core/util.h"
 
-#include "esphome/components/network/util.h"
-#include "esphome/components/socket/socket.h"
+#include "esphome/esphome/components/network/util.h"
+#include "esphome/esphome/components/socket/socket.h"
 
 static const char *TAG = "streamserver";
 
