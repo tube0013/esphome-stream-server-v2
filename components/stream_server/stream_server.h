@@ -19,17 +19,7 @@
 #include "esphome/core/component.h"
 #include "esphome/components/socket/socket.h"
 #include "esphome/components/uart/uart.h"
-
-#ifdef ARDUINO_ARCH_ESP8266
-#include <ESPAsyncTCP.h>
-#else
-// AsyncTCP.h includes parts of freertos, which require FreeRTOS.h header to be included first
-#include <freertos/FreeRTOS.h>
-#include <AsyncTCP.h>
-#endif
-
-
-
+#include "esphome/components/async_tcp/"
 
 #include <memory>
 #include <string>
