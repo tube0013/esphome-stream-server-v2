@@ -19,7 +19,6 @@
 #include "esphome/core/component.h"
 #include "esphome/components/socket/socket.h"
 #include "esphome/components/uart/uart.h"
-#include "esphome/components/async_tcp/"
 
 #include <memory>
 #include <string>
