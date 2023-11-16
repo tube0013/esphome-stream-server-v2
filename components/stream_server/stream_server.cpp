@@ -19,11 +19,18 @@
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 #include "esphome/core/util.h"
-
+#include "esp_event.h"
+#include "esp_log.h"
 #include "esphome/components/network/util.h"
-#include "esphome/components/socket/socket.h"
+#include "lwip/sockets.h"
+
 
 static const char *TAG = "streamserver";
+struct sockaddr_in client_addr;
+  
+  
+char read_buf[128];    
+uint8_t write_buf[128];
 
 using namespace esphome;
 
@@ -39,84 +46,93 @@ void StreamServerComponent::setup() {
         }
     };
 
-    this->socket_ = socket::socket(AF_INET, SOCK_STREAM, PF_INET);
-	
-    struct timeval timeout;      
-    timeout.tv_sec = 0;
-    timeout.tv_usec = 20000; // ESPHome recommends 20-30 ms max for timeouts
+    this->serverSocket = lwip_socket(AF_INET, SOCK_STREAM, PF_INET);
     
-    this->socket_->setsockopt(SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
-    this->socket_->setsockopt(SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+    
+    int opt = 1;
+    setsockopt(this->serverSocket,SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(int));
+    setsockopt(this->serverSocket,SOL_SOCKET, TCP_NODELAY, &opt, sizeof(int));
+        
+    bind(this->serverSocket, reinterpret_cast<struct sockaddr *>(&bind_addr), sizeof(struct sockaddr_in));
   
-    this->socket_->bind(reinterpret_cast<struct sockaddr *>(&bind_addr), sizeof(struct sockaddr_in));
-    this->socket_->listen(8);
-
-
+    listen(this->serverSocket,8);
+    
+    fcntl(this->serverSocket,F_SETFL, O_NONBLOCK);
+    this->socketstatus = -1;
 }
 
 void StreamServerComponent::loop() {
-    this->accept();
     this->read();
     this->write();
-    this->cleanup();
-}
-
-void StreamServerComponent::accept() {
-    struct sockaddr_in client_addr;
-    socklen_t client_addrlen = sizeof(struct sockaddr_in);
-    std::unique_ptr<socket::Socket> socket = this->socket_->accept(reinterpret_cast<struct sockaddr *>(&client_addr), &client_addrlen);
-    if (!socket)
-        return;
-
-    socket->setblocking(false);
-    std::string identifier = socket->getpeername();
-    this->clients_.emplace_back(std::move(socket), identifier);
-    ESP_LOGD(TAG, "New client connected from %s", identifier.c_str());
 }
 
 void StreamServerComponent::cleanup() {
-    auto discriminator = [](const Client &client) { return !client.disconnected; };
-    auto last_client = std::partition(this->clients_.begin(), this->clients_.end(), discriminator);
-    this->clients_.erase(last_client, this->clients_.end());
+   
 }
 
 void StreamServerComponent::read() {
     int len;
-    while ((len = this->stream_->available()) > 0) {
-        char buf[128];
+    int err = 0;
+    while ((hasclient()) && (len = this->stream_->available()) > 0) {
         len = std::min(len, 128);
-        this->stream_->read_array(reinterpret_cast<uint8_t*>(buf), len);
-        for (const Client &client : this->clients_)
-            client.socket->write(buf, len);
-    }
-}
+        this->stream_->read_array(reinterpret_cast<uint8_t*>(read_buf), len);
 
-void StreamServerComponent::write() {
-    uint8_t buf[128];
-    ssize_t len;
-    for (Client &client : this->clients_) {
-        while ((len = client.socket->read(&buf, sizeof(buf))) > 0){
-            this->stream_->write_array(buf, len);
-		}
-        if (len == 0) {
-            ESP_LOGD(TAG, "Client %s disconnected", client.identifier.c_str());
-            client.disconnected = true;
-            continue;
+        if (len > 0){
+            err = send(this->socketstatus, read_buf, len, MSG_DONTWAIT);
         }
     }
+ }
+
+void StreamServerComponent::write() {
+    int len;
+    if(hasclient()){
+        len = recv(this->socketstatus, write_buf, sizeof(write_buf) - 1, MSG_DONTWAIT);
+        len = std::min(len, 128);
+        if (len > 0) {
+            this->stream_->write_array(write_buf, len);
+        }
+        if (len == 0){
+            socklen_t client_addrlen = sizeof(client_addr);
+            getpeername(this->serverSocket,(struct sockaddr *)&client_addr,&client_addrlen);
+            ESP_LOGD(TAG, "Client %s disconnected", inet_ntoa(client_addr.sin_addr));
+            shutdown(this->socketstatus, 0);
+            close(this->socketstatus);
+            this->socketstatus = -1; 
+        }
+    }    
 }
 
 void StreamServerComponent::dump_config() {
-    ESP_LOGCONFIG(TAG, "Stream Server:");
-    ESP_LOGCONFIG(TAG, "  Address: %s:%u",
+    ESP_LOGI(TAG, "Stream Server:");
+    ESP_LOGI(TAG, "  Address: %s:%u",
                   esphome::network::get_ip_address().str().c_str(),
-                  this->port_);
+                 this->port_);
 }
 
 void StreamServerComponent::on_shutdown() {
-    for (const Client &client : this->clients_)
-        client.socket->shutdown(SHUT_RDWR);
+    shutdown(this->socketstatus, 0);
+    close(this->socketstatus);
+    this->socketstatus = -1; 
 }
+
+bool StreamServerComponent::hasclient() {
+    if(this->socketstatus >=0) {
+        return true; 
+    }
+    socklen_t client_addrlen = sizeof(client_addr);
+    this->socketstatus = accept(this->serverSocket, (struct sockaddr *)&client_addr, &client_addrlen);
+    fcntl(this->socketstatus, F_SETFL, O_NONBLOCK);
+    int opt = 1; 
+    setsockopt(this->socketstatus, SOL_SOCKET, TCP_NODELAY, &opt, sizeof(int));
+
+    if(this->socketstatus >= 0){
+        getpeername(this->serverSocket,(struct sockaddr *)&client_addr,&client_addrlen);
+        ESP_LOGD(TAG, "New client connected from %s", inet_ntoa(client_addr.sin_addr));    
+        return true;
+    }
+    return false;
+}
+
 
 StreamServerComponent::Client::Client(std::unique_ptr<esphome::socket::Socket> socket, std::string identifier)
     : socket(std::move(socket)), identifier{identifier}

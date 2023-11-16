@@ -18,6 +18,7 @@
 
 #include "esphome/core/component.h"
 #include "esphome/components/socket/socket.h"
+
 #include "esphome/components/uart/uart.h"
 
 #include <memory>
@@ -38,10 +39,14 @@ public:
     float get_setup_priority() const override { return esphome::setup_priority::AFTER_WIFI; }
 
     void set_port(uint16_t port) { this->port_ = port; }
-	int get_client_count() { return this->clients_.size(); }
-	
+    int get_client_count() { return this->socketstatus; }
+    bool hasclient();
+    int socketstatus;
+    int serverSocket;
+
+    
+    
 protected:
-    void accept();
     void cleanup();
     void read();
     void write();
