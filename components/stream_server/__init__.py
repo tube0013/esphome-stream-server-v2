@@ -47,3 +47,6 @@ def to_code(config):
 
 	yield cg.register_component(var, config)
 	yield uart.register_uart_device(var, config)
+
+	# Request UART to wake the main loop when data arrives for low-latency processing
+	uart.request_wake_loop_on_rx()
