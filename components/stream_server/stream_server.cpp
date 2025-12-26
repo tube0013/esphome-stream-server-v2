@@ -36,7 +36,8 @@ void StreamServerComponent::setup() {
         .sin_port = htons(this->port_),
         .sin_addr = {
             .s_addr = ESPHOME_INADDR_ANY,
-        }
+        },
+        .sin_zero = {0}
     };
 
     this->socket_ = socket::socket(AF_INET, SOCK_STREAM, PF_INET);
