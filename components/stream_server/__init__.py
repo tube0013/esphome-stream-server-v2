@@ -41,12 +41,12 @@ CONFIG_SCHEMA = (
 )
 
 async def to_code(config):
-    var = cg.new_Pvariable(config[CONF_ID])
-    if CONF_PORT in config:
-        cg.add(var.set_port(config[CONF_PORT]))
+	var = cg.new_Pvariable(config[CONF_ID])
+	if CONF_PORT in config:
+		cg.add(var.set_port(config[CONF_PORT]))
 
-    await cg.register_component(var, config)
-    await uart.register_uart_device(var, config)
+	await cg.register_component(var, config)
+	await uart.register_uart_device(var, config)
 
 	# Request UART to wake the main loop when data arrives for low-latency processing
 	uart.request_wake_loop_on_rx()
