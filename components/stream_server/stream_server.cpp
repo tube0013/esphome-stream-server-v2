@@ -110,8 +110,10 @@ void StreamServerComponent::dump_config() {
     ESP_LOGCONFIG(TAG, "Stream Server:");
     std::string ip_str = "";
     for (auto &ip : network::get_ip_addresses()) {
-      if (ip.is_set())
-        ip_str += " " + ip.str();
+      if (ip.is_set()) {
+    	char buf[IP_ADDRESS_BUFFER_SIZE];
+        ip_str += " " + std::string(ip.str_to(buf));
+	  }
     }
     ESP_LOGCONFIG(TAG, "  Address:%s", ip_str.c_str());
     ESP_LOGCONFIG(TAG, "  Port: %u", this->port_);
