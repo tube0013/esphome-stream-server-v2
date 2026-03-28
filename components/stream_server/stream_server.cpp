@@ -19,6 +19,7 @@
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 #include "esphome/core/util.h"
+#include "esphome/core/application.h"
 
 #include "esphome/components/network/util.h"
 #include "esphome/components/socket/socket.h"
@@ -88,6 +89,7 @@ void StreamServerComponent::read() {
         this->stream_->read_array(reinterpret_cast<uint8_t*>(buf), len);
         for (const Client &client : this->clients_)
             client.socket->write(buf, len);
+        App.feed_wdt();
     }
 }
 
@@ -97,6 +99,7 @@ void StreamServerComponent::write() {
     for (Client &client : this->clients_) {
         while ((len = client.socket->read(&buf, sizeof(buf))) > 0){
             this->stream_->write_array(buf, len);
+            App.feed_wdt();
 		}
         if (len == 0) {
             ESP_LOGD(TAG, "Client %s disconnected", client.identifier.c_str());
