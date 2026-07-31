@@ -16,6 +16,7 @@
 
 #include "stream_server.h"
 
+#include "esphome/core/defines.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 #include "esphome/core/util.h"
@@ -30,25 +31,37 @@ using namespace esphome;
 void StreamServerComponent::setup() {
     ESP_LOGCONFIG(TAG, "Setting up stream server...");
 
-    struct sockaddr_in bind_addr = {
-        .sin_len = sizeof(struct sockaddr_in),
-        .sin_family = AF_INET,
-        .sin_port = htons(this->port_),
-        .sin_addr = {
-            .s_addr = ESPHOME_INADDR_ANY,
-        }
-    };
+    // Match the IP version ESPHome itself was built for. socket_ip() returns an
+    // AF_INET6 socket when USE_NETWORK_IPV6 is set -- dual-stack, so IPv4 clients
+    // still work -- and falls back to AF_INET otherwise.
+    this->socket_ = socket::socket_ip(SOCK_STREAM, 0);
+    if (this->socket_ == nullptr) {
+        ESP_LOGE(TAG, "Could not create socket");
+        this->mark_failed();
+        return;
+    }
 
-    this->socket_ = socket::socket(AF_INET, SOCK_STREAM, PF_INET);
-	
-    struct timeval timeout;      
+    struct sockaddr_storage bind_addr;
+    socklen_t bind_addrlen = socket::set_sockaddr_any(reinterpret_cast<struct sockaddr *>(&bind_addr),
+                                                      sizeof(bind_addr), this->port_);
+    if (bind_addrlen == 0) {
+        ESP_LOGE(TAG, "Could not set bind address");
+        this->mark_failed();
+        return;
+    }
+
+    struct timeval timeout;
     timeout.tv_sec = 0;
     timeout.tv_usec = 20000; // ESPHome recommends 20-30 ms max for timeouts
-    
+
     this->socket_->setsockopt(SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
     this->socket_->setsockopt(SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
-  
-    this->socket_->bind(reinterpret_cast<struct sockaddr *>(&bind_addr), sizeof(struct sockaddr_in));
+
+    if (this->socket_->bind(reinterpret_cast<struct sockaddr *>(&bind_addr), bind_addrlen) != 0) {
+        ESP_LOGE(TAG, "Could not bind socket to port %u", this->port_);
+        this->mark_failed();
+        return;
+    }
     this->socket_->listen(8);
 
 
@@ -62,14 +75,31 @@ void StreamServerComponent::loop() {
 }
 
 void StreamServerComponent::accept() {
-    struct sockaddr_in client_addr;
-    socklen_t client_addrlen = sizeof(struct sockaddr_in);
+    // Must fit a sockaddr_in6: the listener is AF_INET6 when IPv6 is enabled, and
+    // a sockaddr_in buffer would truncate an IPv6 peer address.
+    struct sockaddr_storage client_addr;
+    socklen_t client_addrlen = sizeof(client_addr);
     std::unique_ptr<socket::Socket> socket = this->socket_->accept(reinterpret_cast<struct sockaddr *>(&client_addr), &client_addrlen);
     if (!socket)
         return;
 
     socket->setblocking(false);
-    std::string identifier = inet_ntoa(client_addr.sin_addr);
+    // inet_ntoa() only understands sockaddr_in, so format by family instead.
+    // Fixed 64-byte buffer rather than INET6_ADDRSTRLEN, which is not defined
+    // on builds without IPv6.
+    char addr_buf[64];
+    const char *addr_str = nullptr;
+#if USE_NETWORK_IPV6
+    if (client_addr.ss_family == AF_INET6) {
+        auto *addr6 = reinterpret_cast<struct sockaddr_in6 *>(&client_addr);
+        addr_str = inet_ntop(AF_INET6, &addr6->sin6_addr, addr_buf, sizeof(addr_buf));
+    }
+#endif
+    if (addr_str == nullptr) {
+        auto *addr4 = reinterpret_cast<struct sockaddr_in *>(&client_addr);
+        addr_str = inet_ntop(AF_INET, &addr4->sin_addr, addr_buf, sizeof(addr_buf));
+    }
+    std::string identifier = addr_str != nullptr ? addr_str : "unknown";
     this->clients_.emplace_back(std::move(socket), identifier);
     ESP_LOGD(TAG, "New client connected from %s", identifier.c_str());
 }
