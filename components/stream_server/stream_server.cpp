@@ -16,6 +16,9 @@
 
 #include "stream_server.h"
 
+#include <cerrno>
+#include <cstring>
+
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 #include "esphome/core/util.h"
@@ -100,6 +103,11 @@ void StreamServerComponent::write() {
 		}
         if (len == 0) {
             ESP_LOGD(TAG, "Client %s disconnected", client.identifier.c_str());
+            client.disconnected = true;
+            continue;
+        }
+        if (len < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+            ESP_LOGD(TAG, "Client %s error: %s", client.identifier.c_str(), strerror(errno));
             client.disconnected = true;
             continue;
         }
