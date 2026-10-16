@@ -1,3 +1,6 @@
+This project is no longer supported, ESPHome 2026.10 includes a native TUCP UART component: https://esphome.io/components/tcp_uart/
+
+
 # esphome-stream-server-v2
 Custom Component for ESPHome enabling Serial over TCP
 
